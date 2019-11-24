@@ -52,7 +52,7 @@ class _MyAppState extends State<MyApp> {
       setState(() {
         recentSearches = citiesList;
       });
-    } on Exception catch (e) {
+    } catch (e) {
       print('nothing there');
     }
   }
