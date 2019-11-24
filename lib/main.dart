@@ -45,6 +45,7 @@ class _MyAppState extends State<MyApp> {
   Set<Marker> markers = Set();
   SharedPrefs sharedPref = SharedPrefs();
   List<City> recentSearches = List<City>();
+  bool dataLoaded = false;
 
   loadSharedPrefs() async{
     try {
@@ -87,9 +88,11 @@ class _MyAppState extends State<MyApp> {
     String data =
         await DefaultAssetBundle.of(context).loadString("assets/cities.json");
     jsonResult = json.decode(data);
-    print(jsonResult[0]);
     citiesListFromJson = CitiesList.fromJson(jsonResult);
-    print(citiesListFromJson.cities[0].name);
+    dataLoaded = true;
+    setState(() {
+
+    });
 //      return jsonResult;
   }
 
@@ -163,27 +166,30 @@ class _MyAppState extends State<MyApp> {
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton(
+        floatingActionButton: Opacity(
+          opacity: dataLoaded ? 1 : 0,
+          child: FloatingActionButton(
             child: Icon(Icons.search),
-            onPressed: () async{
+          onPressed: () async{
 //                  loadSharedPrefs();
-              City currentLocation = await showSearch(
-                  context: context,
-                  delegate: LocationSearch(citiesListFromJson.cities,recentSearches));
-              widget.currentCity = currentLocation;
-              currentLocation != null ? recentSearches.add(currentLocation) : print('came back');
-              print(recentSearches.length);
-              sharedPref.save('recent', recentSearches);
-              widget.currentLatLng = LatLng(double.parse(currentLocation.lat),double.parse(currentLocation.lng));
-              setState(() {
-                changeLatLng();
+            City currentLocation = await showSearch(
+                context: context,
+                delegate: LocationSearch(citiesListFromJson.cities,recentSearches));
+            widget.currentCity = currentLocation;
+            currentLocation != null ? recentSearches.add(currentLocation) : print('came back');
+            print(recentSearches.length);
+            sharedPref.save('recent', recentSearches);
+            widget.currentLatLng = LatLng(double.parse(currentLocation.lat),double.parse(currentLocation.lng));
+            setState(() {
+              changeLatLng();
 //                    citiesSave.cities.add(currentLocation);
 //                    print(citiesSave.cities[0].name);
 //                    sharedPref.save('recent', citiesSave);
-              });
+            });
 //                  loadSharedPrefs();
-            }
-        ),
+          }
+    ),
+        ) ,
       ),
     );
   }
