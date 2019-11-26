@@ -1,14 +1,17 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:queries/collections.dart';
 import 'dart:convert';
 import 'city.dart';
 import 'sharedpref.dart';
+import "dart:collection";
+import 'package:queries/queries.dart';
 
 void main() => runApp(MaterialApp(
       home: MyApp(),
     ));
-
 
 //SharedPrefs sharedPref = SharedPrefs();
 //CitiesList citiesSave = CitiesList();
@@ -18,7 +21,7 @@ class MyApp extends StatefulWidget {
   LatLng currentLatLng;
   City currentCity;
 
-  MyApp({this.currentCity,this.currentLatLng = const LatLng(12.97, 77.58)});
+  MyApp({this.currentCity, this.currentLatLng = const LatLng(12.97, 77.58)});
 
   @override
   _MyAppState createState() => _MyAppState();
@@ -40,16 +43,16 @@ class MyApp extends StatefulWidget {
 //  jaipur
 //];
 
-
 class _MyAppState extends State<MyApp> {
   Set<Marker> markers = Set();
   SharedPrefs sharedPref = SharedPrefs();
   List<City> recentSearches = List<City>();
   bool dataLoaded = false;
 
-  loadSharedPrefs() async{
+  loadSharedPrefs() async {
     try {
-      List<City> citiesList = CitiesList.fromJson(await sharedPref.read('recent')).cities;
+      List<City> citiesList =
+          CitiesList.fromJson(await sharedPref.read('recent')).cities;
       setState(() {
         recentSearches = citiesList;
       });
@@ -57,6 +60,7 @@ class _MyAppState extends State<MyApp> {
       print('nothing there');
     }
   }
+
   Completer<GoogleMapController> mapController = Completer();
 
   void changeLatLng() async {
@@ -84,22 +88,24 @@ class _MyAppState extends State<MyApp> {
 
   List<dynamic> jsonResult;
 
-  getJson() async {
-    String data =
-        await DefaultAssetBundle.of(context).loadString("assets/cities.json");
+  getJson(data) {
     jsonResult = json.decode(data);
     citiesListFromJson = CitiesList.fromJson(jsonResult);
     dataLoaded = true;
-    setState(() {
-
-    });
+    setState(() {});
 //      return jsonResult;
+  }
+
+  Future<CitiesList> fetchCities() async {
+    String data =
+        await DefaultAssetBundle.of(context).loadString("assets/cities.json");
+    return compute(getJson(data), data);
   }
 
   @override
   void initState() {
     super.initState();
-    getJson();
+    fetchCities();
     loadSharedPrefs();
 //    citiesSave.cities = [];
 
@@ -166,30 +172,38 @@ class _MyAppState extends State<MyApp> {
             ),
           ],
         ),
-        floatingActionButton: Opacity(
-          opacity: dataLoaded ? 1 : 0,
-          child: FloatingActionButton(
-            child: Icon(Icons.search),
-          onPressed: () async{
+        floatingActionButton: dataLoaded
+            ? FloatingActionButton(
+                child: Icon(Icons.search),
+                onPressed: () async {
 //                  loadSharedPrefs();
-            City currentLocation = await showSearch(
-                context: context,
-                delegate: LocationSearch(citiesListFromJson.cities,recentSearches));
-            widget.currentCity = currentLocation;
-            currentLocation != null ? recentSearches.add(currentLocation) : print('came back');
-            print(recentSearches.length);
-            sharedPref.save('recent', recentSearches);
-            widget.currentLatLng = LatLng(double.parse(currentLocation.lat),double.parse(currentLocation.lng));
-            setState(() {
-              changeLatLng();
+                  City currentLocation = await showSearch(
+                      context: context,
+                      delegate: LocationSearch(
+                          citiesListFromJson.cities, recentSearches));
+                  widget.currentCity = currentLocation;
+                  currentLocation != null
+                      ? recentSearches.add(currentLocation)
+                      : print('came back');
+
+                  sharedPref.save('recent', recentSearches);
+                  widget.currentLatLng = LatLng(
+                      double.parse(currentLocation.lat),
+                      double.parse(currentLocation.lng));
+                  setState(() {
+                    changeLatLng();
 //                    citiesSave.cities.add(currentLocation);
 //                    print(citiesSave.cities[0].name);
 //                    sharedPref.save('recent', citiesSave);
-            });
+                  });
 //                  loadSharedPrefs();
-          }
-    ),
-        ) ,
+                })
+            : FloatingActionButton(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  strokeWidth: 1,
+                ),
+              ),
       ),
     );
   }
@@ -199,7 +213,7 @@ class LocationSearch extends SearchDelegate<City> {
   final List<City> cities;
   List<City> recent;
 
-  LocationSearch(this.cities,this.recent);
+  LocationSearch(this.cities, this.recent);
 
   @override
   List<Widget> buildActions(BuildContext context) {
@@ -235,17 +249,29 @@ class LocationSearch extends SearchDelegate<City> {
 
     List<City> suggestions;
 
-    if(query == ''){
-      if(recent.isEmpty){
+    if (query == '') {
+      if (recent.isEmpty) {
         return Text('');
-      }
-      else{
-        suggestions = recent;
+      } else {
+        List<Map<String, dynamic>> recentSearchesString = [];
+        List<String> rawString = [];
+        recent.reversed.forEach((city) {
+          rawString.add(jsonEncode(city).toString());
+        });
+        rawString = rawString.toSet().toList();
+        print(rawString.toSet().toString());
+        rawString.forEach((string) {
+          recentSearchesString.add(jsonDecode(string));
+        });
+
+        suggestions = CitiesList.fromJson(recentSearchesString).cities;
+        ;
         return ListView.builder(
             itemCount: suggestions.length,
             itemBuilder: (context, index) {
               return ListTile(
-                title: Text('${suggestions[index].name.toString()} , ${suggestions[index].country.toString()}'),
+                title: Text(
+                    '${suggestions[index].name.toString()} , ${suggestions[index].country.toString()}'),
                 trailing: Icon(Icons.history),
                 onTap: () {
                   close(context, suggestions[index]);
@@ -253,22 +279,22 @@ class LocationSearch extends SearchDelegate<City> {
               );
             });
       }
-    }
-    else {
+    } else {
       suggestions = duplicateCitiesList
-          .where((city) => city.name.toString().toLowerCase().contains(query.toLowerCase()))
+          .where((city) =>
+              city.name.toString().toLowerCase().contains(query.toLowerCase()))
           .toList();
       return ListView.builder(
           itemCount: suggestions.length,
           itemBuilder: (context, index) {
             return ListTile(
-              title: Text('${suggestions[index].name.toString()} , ${suggestions[index].country.toString()}'),
+              title: Text(
+                  '${suggestions[index].name.toString()} , ${suggestions[index].country.toString()}'),
               onTap: () {
                 close(context, suggestions[index]);
               },
             );
           });
     }
-
   }
 }
