@@ -88,7 +88,7 @@ class _MyAppState extends State<MyApp> {
 
   List<dynamic> jsonResult;
 
-  getJson(data) {
+    getJson(String data) {
     jsonResult = json.decode(data);
     citiesListFromJson = CitiesList.fromJson(jsonResult);
     dataLoaded = true;
@@ -96,7 +96,7 @@ class _MyAppState extends State<MyApp> {
 //      return jsonResult;
   }
 
-  Future<CitiesList> fetchCities() async {
+  FutureOr<CitiesList> fetchCities() async {
     String data =
         await DefaultAssetBundle.of(context).loadString("assets/cities.json");
     return compute(getJson(data), data);
@@ -155,7 +155,7 @@ class _MyAppState extends State<MyApp> {
 //    });
 
     return MaterialApp(
-      home: Scaffold(
+      home: dataLoaded ? Scaffold(
         body: Column(
           children: <Widget>[
             Flexible(
@@ -204,7 +204,7 @@ class _MyAppState extends State<MyApp> {
                   strokeWidth: 1,
                 ),
               ),
-      ),
+      ) : Scaffold(body: Center(child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Colors.blueGrey),),),),
     );
   }
 }
@@ -251,21 +251,24 @@ class LocationSearch extends SearchDelegate<City> {
 
     if (query == '') {
       if (recent.isEmpty) {
-        return Text('');
+        return Text('No Search History');
       } else {
-        List<Map<String, dynamic>> recentSearchesString = [];
-        List<String> rawString = [];
-        recent.reversed.forEach((city) {
-          rawString.add(jsonEncode(city).toString());
-        });
-        rawString = rawString.toSet().toList();
-        print(rawString.toSet().toString());
-        rawString.forEach((string) {
-          recentSearchesString.add(jsonDecode(string));
-        });
-
-        suggestions = CitiesList.fromJson(recentSearchesString).cities;
-        ;
+        suggestions = recent.reversed.toList().toSet().toList();
+//        print(recent[1] == recent[2]);
+//        suggestions = Collection(recent.reversed.toList()).distinct().toList();
+//        print(suggestions[1] == suggestions[2]);
+//        List<Map<String, dynamic>> recentSearchesString = [];
+//        List<String> rawString = [];
+//        recent.reversed.forEach((city) {
+//          rawString.add(jsonEncode(city).toString());
+//        });
+//        rawString = rawString.toSet().toList();
+//        print(rawString.toSet().toString());
+//        rawString.forEach((string) {
+//          recentSearchesString.add(jsonDecode(string));
+//        });
+//
+//        suggestions = CitiesList.fromJson(recentSearchesString).cities;
         return ListView.builder(
             itemCount: suggestions.length,
             itemBuilder: (context, index) {

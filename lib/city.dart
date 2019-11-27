@@ -36,6 +36,11 @@ class City {
   String lat;
   String lng;
 
+  @override
+  bool operator ==(other) => other is City && lat == other.lat && lng == other.lng ;
+  @override
+  int get hashCode => lat.hashCode*lng.hashCode;
+
   City(
       {this.country,this.name,this.lat,this.lng});
 
